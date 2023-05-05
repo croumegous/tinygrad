@@ -50,41 +50,29 @@ class TinyJit:
     self.cnt += 1
     return self.ret
 
-
 class SpecializedJit(TinyJit):
-  def __init__(self, fxn: Callable):
-    super().__init__(fxn)
-    self.specialized_cache: Dict[Tuple[str, Tuple[int, ...]], List[Tuple[Callable, Any]]] = {}
+    def __init__(self, fxn: Callable):
+        super().__init__(fxn)
+        self.specialized_jit_cache: Dict[str, List[Tuple[Callable, Any]]] = {}
 
-  def _get_input_shapes(self, args) -> Tuple[int, ...]:
-    input_shapes = tuple([v.shape for v in args if isinstance(v, Tensor)])
-    return input_shapes
+    def _get_cache_key(self, *args, **kwargs) -> str:
+       return "_".join(
+            str(arg.shape) if isinstance(arg, Tensor) else str(arg)
+            for arg in itertools.chain(args, kwargs.values())
+        )
 
-  def __call__(self, *args, **kwargs) -> Any:
-    if Device.DEFAULT not in ["GPU", "CLANG", "METAL", "CUDA"]: return self.fxn(*args, **kwargs)  # only jit on the GPU codegen
+    def __call__(self, *args, **kwargs) -> Any:
+        if Device.DEFAULT not in ["GPU", "CLANG", "METAL", "CUDA"]: return self.fxn(*args, **kwargs)  # only jit on the GPU codegen
 
-    input_shapes = self._get_input_shapes(args)
-    method_name = self.fxn.__name__
+        cache_key = self._get_cache_key(*args, **kwargs)
+        if cache_key not in self.specialized_jit_cache:
+            self.specialized_jit_cache[cache_key] = []
+            self.cnt = 0
 
-    if (method_name, input_shapes) not in self.specialized_cache:
-      # result = super().__call__(*args, **kwargs)
-      # self.specialized_cache[(method_name, input_shapes)] = self.jit_cache # may be useless
-      self.specialized_cache[(method_name, input_shapes)] = super().__call__(*args, **kwargs)
-      return self.ret 
-    else:
-      self.jit_cache = self.specialized_cache[(method_name, input_shapes)]
-      result = super().__call__(*args, **kwargs)
-      # self.jit_cache = [] # ???
-    return result
+        self.jit_cache = self.specialized_jit_cache[cache_key]
 
+        result = super().__call__(*args, **kwargs)
 
-    ###### V1
-    # if (method_name, input_shapes) not in self.specialized_cache:
-    #   self.specialized_cache[(method_name, input_shapes)] = super().__call__(*args, **kwargs)
-    #   #return self.ret ???
-    # else:
-    #   self.jit_cache = self.specialized_cache[(method_name, input_shapes)]
-    #   return super().__call__(*args, **kwargs)
+        self.specialized_jit_cache[cache_key] = self.jit_cache
 
-    # # return super().__call__(*args, **kwargs)
-    # return self.ret
+        return result

@@ -78,27 +78,38 @@ class TestJit(unittest.TestCase):
 
       @SpecializedJit
       def __call__(self, b: Tensor) -> Tensor:
+        if self.a.shape != b.shape: self.a = self.a[:b.shape[0], :b.shape[1]]
         return (self.a + b).realize()
 
     fun = Fun()
 
+    print("Testing specialized jit=====================================================")
     for _ in range(5):
       b = Tensor.randn(10, 10)
       c = fun(b)
       np.testing.assert_equal(c.numpy(), fun.a.numpy() + b.numpy())
 
+    print("Testing specialized jit with different shape=====================================================")
     # Test with different shapes
     for _ in range(5):
       b = Tensor.randn(5, 5)
       c = fun(b)
       np.testing.assert_equal(c.numpy(), fun.a.numpy()[:5, :5] + b.numpy())
 
+    print("Testing specialized jit with second instance=====================================================")
     # Test with a second instance
     fun2 = Fun()
     for _ in range(5):
       b = Tensor.randn(10, 10)
       c = fun2(b)
       np.testing.assert_equal(c.numpy(), fun2.a.numpy() + b.numpy())
+
+    print("Testing specialized jit with second instance and different shape=====================================================")
+    #reuse old instance
+    for _ in range(5):
+      b = Tensor.randn(5, 5)
+      c = fun(b)
+      np.testing.assert_equal(c.numpy(), fun.a.numpy()[:5, :5] + b.numpy())
 
 if __name__ == '__main__':
   unittest.main()
