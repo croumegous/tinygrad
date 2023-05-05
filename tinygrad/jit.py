@@ -67,8 +67,24 @@ class SpecializedJit(TinyJit):
     method_name = self.fxn.__name__
 
     if (method_name, input_shapes) not in self.specialized_cache:
+      # result = super().__call__(*args, **kwargs)
+      # self.specialized_cache[(method_name, input_shapes)] = self.jit_cache # may be useless
       self.specialized_cache[(method_name, input_shapes)] = super().__call__(*args, **kwargs)
+      return self.ret 
     else:
       self.jit_cache = self.specialized_cache[(method_name, input_shapes)]
+      result = super().__call__(*args, **kwargs)
+      # self.jit_cache = [] # ???
+    return result
 
-    return super().__call__(*args, **kwargs)
+
+    ###### V1
+    # if (method_name, input_shapes) not in self.specialized_cache:
+    #   self.specialized_cache[(method_name, input_shapes)] = super().__call__(*args, **kwargs)
+    #   #return self.ret ???
+    # else:
+    #   self.jit_cache = self.specialized_cache[(method_name, input_shapes)]
+    #   return super().__call__(*args, **kwargs)
+
+    # # return super().__call__(*args, **kwargs)
+    # return self.ret

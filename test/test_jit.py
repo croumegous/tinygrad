@@ -77,27 +77,27 @@ class TestJit(unittest.TestCase):
         self.a = Tensor.randn(10, 10)
 
       @SpecializedJit
-      def specialized_call(self, b: Tensor) -> Tensor:
+      def __call__(self, b: Tensor) -> Tensor:
         return (self.a + b).realize()
 
     fun = Fun()
 
     for _ in range(5):
       b = Tensor.randn(10, 10)
-      c = fun.specialized_call(b)
+      c = fun(b)
       np.testing.assert_equal(c.numpy(), fun.a.numpy() + b.numpy())
 
     # Test with different shapes
     for _ in range(5):
       b = Tensor.randn(5, 5)
-      c = fun.specialized_call(b)
+      c = fun(b)
       np.testing.assert_equal(c.numpy(), fun.a.numpy()[:5, :5] + b.numpy())
 
     # Test with a second instance
     fun2 = Fun()
     for _ in range(5):
       b = Tensor.randn(10, 10)
-      c = fun2.specialized_call(b)
+      c = fun2(b)
       np.testing.assert_equal(c.numpy(), fun2.a.numpy() + b.numpy())
 
 if __name__ == '__main__':
