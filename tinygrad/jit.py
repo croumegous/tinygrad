@@ -49,3 +49,26 @@ class TinyJit:
       self.ret = self.fxn(*args, **kwargs)
     self.cnt += 1
     return self.ret
+
+
+class SpecializedJit(TinyJit):
+  def __init__(self, fxn: Callable):
+    super().__init__(fxn)
+    self.specialized_cache: Dict[Tuple[str, Tuple[int, ...]], List[Tuple[Callable, Any]]] = {}
+
+  def _get_input_shapes(self, args) -> Tuple[int, ...]:
+    input_shapes = tuple([v.shape for v in args if isinstance(v, Tensor)])
+    return input_shapes
+
+  def __call__(self, *args, **kwargs) -> Any:
+    if Device.DEFAULT not in ["GPU", "CLANG", "METAL", "CUDA"]: return self.fxn(*args, **kwargs)  # only jit on the GPU codegen
+
+    input_shapes = self._get_input_shapes(args)
+    method_name = self.fxn.__name__
+
+    if (method_name, input_shapes) not in self.specialized_cache:
+      self.specialized_cache[(method_name, input_shapes)] = super().__call__(*args, **kwargs)
+    else:
+      self.jit_cache = self.specialized_cache[(method_name, input_shapes)]
+
+    return super().__call__(*args, **kwargs)
