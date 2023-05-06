@@ -6,7 +6,7 @@ from tinygrad.lazy import Device
 from tinygrad.tensor import Tensor
 from tinygrad.ops import GlobalCounters, RawBuffer
 
-class TinyJit:
+class BaseJit:
   def __init__(self, fxn:Callable):
     self.fxn: Callable = fxn
     self.cnt: int = 0
@@ -50,18 +50,18 @@ class TinyJit:
     self.cnt += 1
     return self.ret
 
-class SpecializedJit:
-    def __init__(self, fxn: Callable):
-        self.fxn = fxn
-        self.jit_cache: Dict[Tuple, TinyJit] = {}
+class TinyJit:
+  def __init__(self, fxn: Callable):
+    self.fxn = fxn
+    self.jit_cache: Dict[str, BaseJit] = {}
 
     # Add support for instance methods
-    def __get__(self, obj, objtype): return functools.partial(self.__call__, obj)
+  def __get__(self, obj, objtype): return functools.partial(self.__call__, obj)
 
-    def __call__(self, *args, **kwargs) -> Any:
-        if Device.DEFAULT not in ["GPU", "CLANG", "METAL", "CUDA"]: return self.fxn(*args, **kwargs)  # Only jit on the GPU codegen
+  def __call__(self, *args, **kwargs) -> Any:
+    if Device.DEFAULT not in ["GPU", "CLANG", "METAL", "CUDA"]: return self.fxn(*args, **kwargs)  # Only jit on the GPU codegen
 
-        key = tuple(arg.shape if isinstance(arg, Tensor) else arg for arg in itertools.chain(args, kwargs.values()))
-        if key not in self.jit_cache: self.jit_cache[key] = TinyJit(self.fxn)
+    key = "_".join(str(arg.shape) if isinstance(arg, Tensor) else str(arg) for arg in itertools.chain(args, kwargs.values()))
+    if key not in self.jit_cache: self.jit_cache[key] = BaseJit(self.fxn)
 
-        return self.jit_cache[key](*args, **kwargs)
+    return self.jit_cache[key](*args, **kwargs)

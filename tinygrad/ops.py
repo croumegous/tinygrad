@@ -91,7 +91,7 @@ class ASTRunner:
     if GlobalCounters.cache is not None: GlobalCounters.cache.append((self, rawbufs))
     return self(rawbufs)
 
-  def __call__(self, rawbufs:List[RawBuffer], jit=False, force_wait=False, debug_ast=None) -> Optional[float]:
+  def __call__(self, rawbufs:List[RawBuffer], jit=False, force_wait=False) -> Optional[float]:
     if getenv("OPTLOCAL") and self.global_size is not None and self.local_size is None: self.local_size = self.optimize_local_size(rawbufs, allow_cache=(getenv("OPTLOCAL") >= 2))
     if et := self.clprg(self.global_size, self.local_size, *rawbufs, wait=force_wait or DEBUG>=2): GlobalCounters.time_sum_s += et
     if DEBUG >= 2:

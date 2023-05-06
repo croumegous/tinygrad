@@ -2,7 +2,7 @@
 import unittest
 import numpy as np
 from tinygrad.tensor import Tensor, Device
-from tinygrad.jit import TinyJit, SpecializedJit
+from tinygrad.jit import TinyJit
 
 @unittest.skipUnless(Device.DEFAULT == "GPU", "JIT is only for GPU")
 class TestJit(unittest.TestCase):
@@ -70,33 +70,22 @@ class TestJit(unittest.TestCase):
       c = fun(b)
       np.testing.assert_equal(c.numpy(), fun.a.numpy()+b.numpy())
   
-  ### Specialized JIT tests
   def test_specialized_jit(self):
     class Fun:
       def __init__(self):
         self.a = Tensor.randn(10, 10)
-
-      @SpecializedJit
-      def __call__(self, b: Tensor) -> Tensor:
+      @TinyJit
+      def __call__(self, b:Tensor) -> Tensor:
         if self.a.shape != b.shape: self.a = self.a[:b.shape[0], :b.shape[1]]
         return (self.a + b).realize()
-
+      
     fun = Fun()
-
-    print("Testing specialized jit")
+    
     for _ in range(5):
       b = Tensor.randn(10, 10)
       c = fun(b)
       np.testing.assert_equal(c.numpy(), fun.a.numpy() + b.numpy())
 
-    print("Testing specialized jit with different shape")
-    # Test with different shapes
-    for _ in range(5):
-      b = Tensor.randn(5, 5)
-      c = fun(b)
-      np.testing.assert_equal(c.numpy(), fun.a.numpy()[:5, :5] + b.numpy())
-
-    print("Testing specialized jit with second instance")
     # Test with a second instance
     fun2 = Fun()
     for _ in range(5):
@@ -104,44 +93,19 @@ class TestJit(unittest.TestCase):
       c = fun2(b)
       np.testing.assert_equal(c.numpy(), fun2.a.numpy() + b.numpy())
 
-    print("Testing specialized jit old instance")
-    #reuse old instance
+    # Test reuse old instance
+    for _ in range(5):
+      b = Tensor.randn(10, 10)
+      c = fun(b)
+      np.testing.assert_equal(c.numpy(), fun.a.numpy() + b.numpy())
+      
+    # Test with different shapes
     for _ in range(5):
       b = Tensor.randn(5, 5)
       c = fun(b)
       np.testing.assert_equal(c.numpy(), fun.a.numpy()[:5, :5] + b.numpy())
 
-# @unittest.skipUnless(Device.DEFAULT == "GPU", "SpecializedJIT is only for GPU")
-# class TestSpecializedJit(unittest.TestCase):
-#   def test_simple_specialized_jit(self):
-#     @SpecializedJit
-#     def add(a, b): return (a+b).realize()
 
-#     a = Tensor.randn(10, 10)
-#     b = Tensor.randn(10, 10)
-#     c = add(a, b)
-#     np.testing.assert_equal(c.numpy(), a.numpy()+b.numpy())
 
-#     # Run again with different shapes, should re-JIT
-#     a = Tensor.randn(20, 20)
-#     b = Tensor.randn(20, 20)
-#     c = add(a, b)
-#     np.testing.assert_equal(c.numpy(), a.numpy()+b.numpy())
-
-#   def test_kwargs_specialized_jit(self):
-#     @SpecializedJit
-#     def add_kwargs(first, second): return (first+second).realize()
-
-#     a = Tensor.randn(10, 10)
-#     b = Tensor.randn(10, 10)
-#     c = add_kwargs(first=a, second=b)
-#     np.testing.assert_equal(c.numpy(), a.numpy()+b.numpy())
-
-#     # Run again with different shapes, should re-JIT
-#     a = Tensor.randn(20, 20)
-#     b = Tensor.randn(20, 20)
-#     c = add_kwargs(first=a, second=b)
-#     np.testing.assert_equal(c.numpy(), a.numpy()+b.numpy())
-    
 if __name__ == '__main__':
   unittest.main()
