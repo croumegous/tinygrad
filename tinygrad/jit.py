@@ -66,13 +66,18 @@ class SpecializedJit(TinyJit):
 
         cache_key = self._get_cache_key(*args, **kwargs)
         if cache_key not in self.specialized_jit_cache:
-            self.specialized_jit_cache[cache_key] = []
             self.cnt = 0
 
-        self.jit_cache = self.specialized_jit_cache[cache_key]
+        self.jit_cache = self.specialized_jit_cache.get(cache_key, [])
+        
+        if cache_key != self.specialized_jit_cache.get("last", cache_key):
+          self.cnt = 1
+        
 
         result = super().__call__(*args, **kwargs)
 
         self.specialized_jit_cache[cache_key] = self.jit_cache
+        
+        self.specialized_jit_cache["last"] = cache_key
 
         return result

@@ -104,7 +104,7 @@ class TestJit(unittest.TestCase):
       c = fun2(b)
       np.testing.assert_equal(c.numpy(), fun2.a.numpy() + b.numpy())
 
-    print("Testing specialized jit with second instance and different shape=====================================================")
+    print("Testing specialized jit old instance=====================================================")
     #reuse old instance
     for _ in range(5):
       b = Tensor.randn(5, 5)
