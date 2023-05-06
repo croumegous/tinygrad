@@ -93,7 +93,6 @@ class ASTRunner:
 
   def __call__(self, rawbufs:List[RawBuffer], jit=False, force_wait=False, debug_ast=None) -> Optional[float]:
     if getenv("OPTLOCAL") and self.global_size is not None and self.local_size is None: self.local_size = self.optimize_local_size(rawbufs, allow_cache=(getenv("OPTLOCAL") >= 2))
-    if DEBUG > 1 : print(f"{self.clprg=}\n {self.global_size=}\n {self.local_size=}\n {rawbufs=}\n {jit=}\n {force_wait=}\n")
     if et := self.clprg(self.global_size, self.local_size, *rawbufs, wait=force_wait or DEBUG>=2): GlobalCounters.time_sum_s += et
     if DEBUG >= 2:
       print(f"{colored(f'*** {GlobalCounters.kernel_count:4d}', 'magenta' if jit else None)} {(self.display_name+' '*(28-len(self.name))) if self.display_name is not None else self.name:26s} arg {len(rawbufs):3d} sz {str(self.global_size):18s} {str(self.local_size):12s} OPs {int(self.op_estimate/1e6):6d}M/{GlobalCounters.global_ops/1e9:7.2f}G  mem {GlobalCounters.mem_used/1e9:5.2f} GB " +

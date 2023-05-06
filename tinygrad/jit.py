@@ -50,34 +50,18 @@ class TinyJit:
     self.cnt += 1
     return self.ret
 
-class SpecializedJit(TinyJit):
+class SpecializedJit:
     def __init__(self, fxn: Callable):
-        super().__init__(fxn)
-        self.specialized_jit_cache: Dict[str, List[Tuple[Callable, Any]]] = {}
+        self.fxn = fxn
+        self.jit_cache: Dict[Tuple, TinyJit] = {}
 
-    def _get_cache_key(self, *args, **kwargs) -> str:
-       return "_".join(
-            str(arg.shape) if isinstance(arg, Tensor) else str(arg)
-            for arg in itertools.chain(args, kwargs.values())
-        )
+    # Add support for instance methods
+    def __get__(self, obj, objtype): return functools.partial(self.__call__, obj)
 
     def __call__(self, *args, **kwargs) -> Any:
-        if Device.DEFAULT not in ["GPU", "CLANG", "METAL", "CUDA"]: return self.fxn(*args, **kwargs)  # only jit on the GPU codegen
+        if Device.DEFAULT not in ["GPU", "CLANG", "METAL", "CUDA"]: return self.fxn(*args, **kwargs)  # Only jit on the GPU codegen
 
-        cache_key = self._get_cache_key(*args, **kwargs)
-        if cache_key not in self.specialized_jit_cache:
-            self.cnt = 0
+        key = tuple(arg.shape if isinstance(arg, Tensor) else arg for arg in itertools.chain(args, kwargs.values()))
+        if key not in self.jit_cache: self.jit_cache[key] = TinyJit(self.fxn)
 
-        self.jit_cache = self.specialized_jit_cache.get(cache_key, [])
-        
-        if cache_key != self.specialized_jit_cache.get("last", cache_key):
-          self.cnt = 1
-        
-
-        result = super().__call__(*args, **kwargs)
-
-        self.specialized_jit_cache[cache_key] = self.jit_cache
-        
-        self.specialized_jit_cache["last"] = cache_key
-
-        return result
+        return self.jit_cache[key](*args, **kwargs)
